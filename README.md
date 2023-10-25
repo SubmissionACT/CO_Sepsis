@@ -1,2 +1,2 @@
 # CO_Sepsis
-This repository contains all the codes used for the CO sepsis project
+This repository contains all the data and codes for the CO and sepsis paper.   
