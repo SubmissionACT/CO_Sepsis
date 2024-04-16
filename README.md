@@ -17,5 +17,5 @@ The Analyses folder contains all the codes used in this study.
 - EDM.R — codes for Empirical Dynamic Modeling (EDM) analyses    
 - PCMCI+.py — codes for Peter-Clark-momentary-conditional-independence plus (PCMCI+) analyses
 - DYNOTEARS.py — codes for Dynamic Non-combinatorial Optimization via Trace Exponential and Augmented lagRangian for Structure learning (DYNOTEARS) analyses         
-- GAM.R —- codes for Generalized Additive Model (GAM) analyses  
+- GAM.R — codes for Generalized Additive Model (GAM) analyses  
   
