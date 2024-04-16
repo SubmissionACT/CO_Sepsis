@@ -58,21 +58,6 @@ fn_E_smapc <- function(data,y){
 
 plist <- list(data=list(df),y=dis.name) %>% cross_df()
 E_smapc_out <- plist %>% pmap_df(fn_E_smapc)
-save(E_smapc_out, file = "E_smapc_out1025.rda")
-
-# load('E_smapc_out_sep_A_max.rda')
-# ggplot(E_smapc_out,aes(E,rho))+
-#   geom_line()+
-#   theme_bw() +
-#   theme(axis.text.x=element_text(size = 12, color= "black"),
-#         axis.text.y=element_text(size = 12, color= "black"),
-#         axis.title.x=element_text(size=15),
-#         axis.title.y=element_text(size=15),
-#         axis.ticks.length=unit(0.2,'cm'),
-#         legend.position="none",
-#         panel.background = element_blank(),
-#         plot.title = element_text(size = 18, hjust=0.5))
-
 
 E_smapc=E_smapc_out %>%
   filter(E != 1) %>%
@@ -110,23 +95,6 @@ theta_out <- foreach(i = 1:nrow(plist),
                        theta_out=plist[i,] %>% pmap_df(fn_theta_justY)
                      }
 stopCluster(cl)
-
-save(theta_out, file = "theta_out1025.rda")
-
-# load("theta_out_sep_A_max.rda")
-# 
-# ggplot(theta_out,aes(theta,rho))+
-#   geom_line()+
-#   theme_bw() +
-#   theme(axis.text.x=element_text(size = 12, color= "black"),
-#         axis.text.y=element_text(size = 12, color= "black"),
-#         axis.title.x=element_text(size=15),
-#         axis.title.y=element_text(size=15),
-#         axis.ticks.length=unit(0.2,'cm'),
-#         legend.position="none",
-#         panel.background = element_blank(),
-#         plot.title = element_text(size = 18, hjust=0.5))
-
 
 best_theta=theta_out %>%
   group_by(dis) %>%
@@ -184,47 +152,43 @@ registerDoParallel(cl)
 mfi_surr_out <- plist %>% pmap_df(fn_mfi_1_smap_surr)
 stopCluster(cl)
 
-save(mfi_surr_out, file = "mfi_surr_out1025.rda")
+p_function=function(x,pH,pL){
+  dfg2_Q1=dfg2 %>% filter(grp=='surr') %>%
+    group_by(dis,plt,tp_value,E) %>%
+    summarise(ph=quantile(.data[[x]], pH,na.rm=T),
+              pl=quantile(.data[[x]], pL,na.rm=T))
 
-# load('mfi_surr_out_sep_A_max.rda')
-# 
-# p_function=function(x,pH,pL){
-#   dfg2_Q1=dfg2 %>% filter(grp=='surr') %>%
-#     group_by(dis,plt,tp_value,E) %>%
-#     summarise(ph=quantile(.data[[x]], pH,na.rm=T),
-#               pl=quantile(.data[[x]], pL,na.rm=T))
-#   
-#   dfg2_Q0=dfg2 %>% filter(grp=='raw') %>% select(-grp) %>%
-#     group_by(dis,plt,tp_value,E) %>%
-#     select(p0=x)
-#   
-#   dfg2_Q=left_join(dfg2_Q1,dfg2_Q0,by=c('E','tp_value',
-#                                         'dis','plt'))
-#   
-#   ggplot(dfg2_Q) +
-#     geom_hline(yintercept = 0,linetype='dashed') +
-#     geom_line(aes(tp_value,p0),size=0.5)+
-#     geom_point(aes(tp_value,p0),size=1)+
-#     geom_linerange(aes(x=tp_value,ymin =pl, ymax = ph),
-#                    size=1,color='green',alpha=0.5)+
-#     theme_bw() +
-#     ylab('MFI')+
-#     xlab("Lag")+
-#     theme(axis.text.x=element_text(size = 12, color= "black"),
-#           axis.text.y=element_text(size = 12, color= "black"),
-#           axis.title.x=element_text(size=15),
-#           axis.title.y=element_text(size=15),
-#           axis.ticks.length=unit(0.2,'cm'),
-#           legend.position="none",
-#           panel.background = element_blank(),
-#           plot.title = element_text(size = 18, hjust=0.5)) +
-#     facet_grid(dis~plt,scales='free')
-# }
-# 
-# dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>% mutate(i=i-1,grp=ifelse(i==0,'raw','surr'),
-#                                                                           rho=rho-best_theta$rho, plt=plt_1)
-# 
-# p_function(x='rho',pH=0.95,pL=0.05)
+  dfg2_Q0=dfg2 %>% filter(grp=='raw') %>% select(-grp) %>%
+    group_by(dis,plt,tp_value,E) %>%
+    select(p0=x)
+
+  dfg2_Q=left_join(dfg2_Q1,dfg2_Q0,by=c('E','tp_value',
+                                        'dis','plt'))
+
+  ggplot(dfg2_Q) +
+    geom_hline(yintercept = 0,linetype='dashed') +
+    geom_line(aes(tp_value,p0),size=0.5)+
+    geom_point(aes(tp_value,p0),size=1)+
+    geom_linerange(aes(x=tp_value,ymin =pl, ymax = ph),
+                   size=1,color='green',alpha=0.5)+
+    theme_bw() +
+    ylab('MFI')+
+    xlab("Lag")+
+    theme(axis.text.x=element_text(size = 12, color= "black"),
+          axis.text.y=element_text(size = 12, color= "black"),
+          axis.title.x=element_text(size=15),
+          axis.title.y=element_text(size=15),
+          axis.ticks.length=unit(0.2,'cm'),
+          legend.position="none",
+          panel.background = element_blank(),
+          plot.title = element_text(size = 18, hjust=0.5)) +
+    facet_grid(dis~plt,scales='free')
+}
+
+dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>% mutate(i=i-1,grp=ifelse(i==0,'raw','surr'),
+                                                                          rho=rho-best_theta$rho, plt=plt_1)
+
+p_function(x='rho',pH=0.95,pL=0.05)
 ###################################### Effect size #######################################
 best_theta = best_theta[, "theta"]
 
@@ -288,27 +252,23 @@ C_out=foreach(i = 1:nrow(plist),
               }
 stopCluster(cl)
 
-save(C_out, file = "C_out1025.rda")
+tempA <- C_out %>%  filter(tp_value>=-3) %>% group_by(tp_value,E,dis,plt) %>%
+  summarise(effect=mean(effect,na.rm=T))
 
-# load("C_out_sep_A_max.rda")
-# 
-# tempA <- C_out %>%  filter(tp_value>=-3) %>% group_by(tp_value,E,dis,plt) %>%
-#   summarise(effect=mean(effect,na.rm=T))
-# 
-# ggplot(tempA,aes(tp_value,effect))+geom_line()+geom_hline(yintercept = 0) +
-#   ylab("Effect size")+
-#   xlab("lag")+
-#   facet_grid(~plt,scales='free')+
-#   theme_bw() +
-#   theme(axis.text.x=element_text(size = 12, color= "black"),
-#         axis.text.y=element_text(size = 12, color= "black"),
-#         axis.title.x=element_text(size=15),
-#         axis.title.y=element_text(size=15),
-#         axis.ticks.length=unit(0.2,'cm'),
-#         legend.position="none",
-#         panel.background = element_blank(),
-#         plot.title = element_text(size = 18, hjust=0.5))
-# 
+ggplot(tempA,aes(tp_value,effect))+geom_line()+geom_hline(yintercept = 0) +
+  ylab("Effect size")+
+  xlab("lag")+
+  facet_grid(~plt,scales='free')+
+  theme_bw() +
+  theme(axis.text.x=element_text(size = 12, color= "black"),
+        axis.text.y=element_text(size = 12, color= "black"),
+        axis.title.x=element_text(size=15),
+        axis.title.y=element_text(size=15),
+        axis.ticks.length=unit(0.2,'cm'),
+        legend.position="none",
+        panel.background = element_blank(),
+        plot.title = element_text(size = 18, hjust=0.5))
+
 
 
 

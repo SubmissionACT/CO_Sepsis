@@ -34,15 +34,12 @@ def get_data(data_all,  var_names=[r'$Sepsis$', r'$CO$', r'$O_{3}$',
 
     # Return
     return data_out
-    # Return
-    return data_out
 
 
 def get_data_and_mask(data_all, season, var_names):
     if season == "Year":
         data_out = get_data(data_all,  var_names)
         return data_out, None
-
 
     data_with_season = data_all.copy()
 

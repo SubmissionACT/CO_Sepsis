@@ -20,13 +20,11 @@ FTjust <- function(dis, plt, df_t){
   plist <-  "cb.plt+cb.coplt1 +cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
-        s(t,k=",df_t,"*18,fx=T,bs='cr')+
+        s(t,k=",df_t,"*18)+
 
         as.factor(dow)+as.factor(holiday),
  
-        family=quasipoisson(link = 'log'), scale=-1,
-        control=gam.control(epsilon=0.0000001,maxit=200),
-        na.action= na.omit, data=data)", sep='')))
+        family=quasipoisson(link = 'log'), data=data)", sep='')))
   
   
   iqr<-IQR(data[[plt]],na.rm=TRUE)
@@ -70,13 +68,11 @@ FTjust <- function(dis, plt, df_t){
   plist <-  "cb.plt+cb.coplt1+cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
-        s(t,k=",df_t,"*18,fx=T,bs='cr')+
+        s(t,k=",df_t,"*18)+
 
         as.factor(dow)+as.factor(holiday),
  
-        family=quasipoisson(link = 'log'), scale=-1,
-        control=gam.control(epsilon=0.0000001,maxit=200),
-        na.action= na.omit, data=data)", sep='')))
+        family=quasipoisson(link = 'log'), data=data)", sep='')))
   
   
   iqr<-IQR(data[["temp"]],na.rm=TRUE)
@@ -121,13 +117,11 @@ FTjust <- function(dis, plt,df_t){
   plist <-  "cb.plt+cb.coplt1+cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
-        s(t,k=",df_t,"*18,fx=T,bs='cr')+
+        s(t,k=",df_t,"*18)+
 
         as.factor(dow)+as.factor(holiday),
  
-        family=quasipoisson(link = 'log'), scale=-1,
-        control=gam.control(epsilon=0.0000001,maxit=200),
-        na.action= na.omit, data=data)", sep='')))
+        family=quasipoisson(link = 'log'), data=data)", sep='')))
   
   
   iqr<-IQR(data[["rh"]],na.rm=TRUE)
