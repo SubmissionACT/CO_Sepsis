@@ -4,7 +4,7 @@ packages <- c('tidyverse','knitr','lubridate','dplyr','purrr','rEDM','doParallel
               'foreach')
 lapply(packages, require, character.only=T) 
 
-### data and functions
+### data 
 load("sepsis0118.rda")
 df <-  dfA %>% select(date, sep, temp,rh,co,fsp,o3h8max,no2)
 
@@ -39,9 +39,9 @@ nomz <- function(x, normalization=T, dseason=T, season_sd=F, sea=365, dtrend=T, 
 }
 
 df <- df %>% as.data.frame() %>% mutate_at(2:ncol(.),nomz) 
-
-write.csv(df, file = "sepsis_TTTF.csv")
-
+       
+write.csv(df, file = "sepsis_TTTF.csv")     
+       
 ########################################## MFI ###########################################
 
 ### determine optimal E for S-map
@@ -185,10 +185,11 @@ p_function=function(x,pH,pL){
     facet_grid(dis~plt,scales='free')
 }
 
-dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>% mutate(i=i-1,grp=ifelse(i==0,'raw','surr'),
-                                                                          rho=rho-best_theta$rho, plt=plt_1)
+dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>% 
+  mutate(i=i-1,grp=ifelse(i==0,'raw','surr'),rho=rho-best_theta$rho, plt=plt_1)
 
 p_function(x='rho',pH=0.95,pL=0.05)
+
 ###################################### Effect size #######################################
 best_theta = best_theta[, "theta"]
 
@@ -252,22 +253,61 @@ C_out=foreach(i = 1:nrow(plist),
               }
 stopCluster(cl)
 
-tempA <- C_out %>%  filter(tp_value>=-3) %>% group_by(tp_value,E,dis,plt) %>%
-  summarise(effect=mean(effect,na.rm=T))
+C_out$tp_value <- as.numeric(C_out$tp_value)
+C_out$plt <- as.character(C_out$plt)
 
-ggplot(tempA,aes(tp_value,effect))+geom_line()+geom_hline(yintercept = 0) +
-  ylab("Effect size")+
-  xlab("lag")+
-  facet_grid(~plt,scales='free')+
+C_out <- C_out %>%
+  mutate(special_color = case_when(
+    plt == "co" & tp_value %in% c(0, -1) ~ "red",
+    plt == "temp" & tp_value %in% c(0, -2, -3) ~ "red",
+    plt == "rh" & tp_value == -3 ~ "red",
+    TRUE ~ "black"  # Default color for other cases
+  ))
+
+C_out$tp_value <- abs(C_out$tp_value)
+C_out$tp_value <- factor(C_out$tp_value, levels=c(0,1,2,3), labels = c(0,1,2,3))
+
+C_out$plt <- factor(C_out$plt, levels=c("co","o3h8max","fsp","no2","temp","rh"),
+                    labels = c(
+                      expression(paste("CO",sep = " ")),
+                      expression(paste("O"[3],sep = " ")),
+                      expression(paste("PM"[2.5],sep = " ")),
+                      expression(paste("NO"[2],sep = " ")),
+                      expression(paste("Temp",sep = " ")),
+                      expression(paste("Humid",sep = " "))
+                    ))
+
+P_effect <- ggplot(C_out,aes(tp_value,effect,color = special_color))+
+  geom_hline(yintercept = 0,linetype='dashed',color="darkgray") +
+  geom_boxplot(outlier.shape = 23)+
+  ylab("Sepsis risk (∂Sep/∂Env)")+
+  xlab("")+
+  scale_color_manual(values = c("red" = "red", "black" = "gray30")) +  
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  facet_grid(~plt,scales='free',labeller = "label_parsed")+
   theme_bw() +
-  theme(axis.text.x=element_text(size = 12, color= "black"),
-        axis.text.y=element_text(size = 12, color= "black"),
-        axis.title.x=element_text(size=15),
-        axis.title.y=element_text(size=15),
-        axis.ticks.length=unit(0.2,'cm'),
-        legend.position="none",
-        panel.background = element_blank(),
-        plot.title = element_text(size = 18, hjust=0.5))
+  theme(axis.text.x = element_text(size = 8, color = "darkgray"),
+        axis.text.y = element_text(size = 8, color = "darkgray"),
+        axis.title.x = element_text(size = 10, color = "darkgray"),
+        axis.title.y = element_text(size = 10, color = "black"),
+        axis.ticks.length = unit(0.2, 'cm'),
+        axis.ticks.x = element_line(color = "darkgray"),
+        axis.ticks.y = element_line(color = "darkgray"),
+        axis.line = element_line(colour = "darkgray"),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        legend.box = "vertical",
+        legend.margin = margin(-15, unit = "pt"),
+        legend.box.spacing = margin(15.5),
+        legend.background = element_rect(fill = "transparent"),
+        strip.background = element_blank(),
+        panel.border = element_blank(),
+        legend.key = element_rect(fill = "transparent"),
+        strip.text = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(size = 35, hjust = 0.5, color = "gray40"))
+P_effect
 
 
 

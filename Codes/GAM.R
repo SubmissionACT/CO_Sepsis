@@ -1,31 +1,28 @@
-################################## Load packages and data ###################################
-library(tidyverse); library(dlnm);
-library(lubridate); library(tsModel);
-library(mgcv); library(scales); library(splines)
-library(ggsci)
 
+##################################### preparation work #####################################
+### packages
+packages <- c('tidyverse','dlnm','lubridate','tsModel','mgcv','scales','splines','ggsci')
+lapply(packages, require, character.only=T) 
+
+### data
 load("sepsis0118.rda")
-
 dfA$t <- 1:length(dfA$date)
 data=dfA
+print(data)
 
 ################################## Analysis for air pollutants ################################
-FTjust <- function(dis, plt, df_t){
+HTadjust <- function(dis, plt, df_t){
   
   cb.plt = crossbasis(data[[plt]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
   cb.coplt2 = crossbasis(data[["rh"]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
-  cb.coplt1 = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)),
-                         arglag=list(fun="integer"))
+  cb.coplt1 = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)), arglag=list(fun="integer"))
   
   plist <-  "cb.plt+cb.coplt1 +cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
         s(t,k=",df_t,"*18)+
-
         as.factor(dow)+as.factor(holiday),
- 
         family=quasipoisson(link = 'log'), data=data)", sep='')))
-  
   
   iqr<-IQR(data[[plt]],na.rm=TRUE)
   eval(parse(text=paste("pred <- crosspred(cb.plt, model,
@@ -47,7 +44,7 @@ plist <- list(dis = c('sep'),
               plt = c( "co","fsp","o3h8max","no2"),
               df_t=c(7))
 
-bb <- plist %>% cross_df()  %>%  pmap_df(FTjust)
+bb <- plist %>% cross_df()  %>%  pmap_df(HTadjust)
 
 bbA <- bb %>%
   gather(lagA, value, starts_with("lag")) %>%
@@ -56,24 +53,20 @@ bbA <- bb %>%
   mutate(lag=factor(lag))
 
 dat1 <- bbA
-dat1
 
 ################################## Analysis for temperature ################################
-FTjust <- function(dis, plt, df_t){
+T_COadjust <- function(dis, plt, df_t){
   
   cb.coplt1 = crossbasis(data[[plt]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
   cb.coplt2 = crossbasis(data[["rh"]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
-  cb.plt = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)),
-                      arglag=list(fun="integer"))
+  cb.plt = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)), arglag=list(fun="integer"))
+  
   plist <-  "cb.plt+cb.coplt1+cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
         s(t,k=",df_t,"*18)+
-
         as.factor(dow)+as.factor(holiday),
- 
         family=quasipoisson(link = 'log'), data=data)", sep='')))
-  
   
   iqr<-IQR(data[["temp"]],na.rm=TRUE)
   eval(parse(text=paste("pred <- crosspred(cb.plt, model,
@@ -95,7 +88,7 @@ plist <- list(dis = c('sep'),
               plt = c( "co"),
               df_t=c(7))
 
-bb <- plist %>% cross_df()  %>%  pmap_df(FTjust)
+bb <- plist %>% cross_df()  %>%  pmap_df(T_COadjust)
 
 bbA <- bb %>%
   gather(lagA, value, starts_with("lag")) %>%
@@ -104,25 +97,22 @@ bbA <- bb %>%
   mutate(lag=factor(lag))
 
 dat2 <- bbA
-dat2
+
+dat2 <- dat2 %>% mutate(matfit = matfit/10, mathigh=mathigh/10, matlow=matlow/10)
 
 ################################## Analysis for relative humidity ################################
-FTjust <- function(dis, plt,df_t){
+RH_COadjust <- function(dis, plt,df_t){
   
   cb.coplt1 = crossbasis(data[[plt]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
   cb.plt = crossbasis(data[["rh"]], lag=3, argvar=list(fun="lin"), arglag=list(fun="integer"))
-  cb.coplt2 = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)),
-                         arglag=list(fun="integer"))
+  cb.coplt2 = crossbasis(data[["temp"]], lag=3, argvar=list(fun="thr",thr=c(18,28)), arglag=list(fun="integer"))
   
   plist <-  "cb.plt+cb.coplt1+cb.coplt2"
   
   eval(parse(text=paste("model <- gam(", dis," ~ ", plist, "+
         s(t,k=",df_t,"*18)+
-
         as.factor(dow)+as.factor(holiday),
- 
         family=quasipoisson(link = 'log'), data=data)", sep='')))
-  
   
   iqr<-IQR(data[["rh"]],na.rm=TRUE)
   eval(parse(text=paste("pred <- crosspred(cb.plt, model,
@@ -144,7 +134,7 @@ plist <- list(dis = c('sep'),
               plt = c( "co"),
               df_t=c(7))
 
-bb <- plist %>% cross_df()  %>%  pmap_df(FTjust)
+bb <- plist %>% cross_df()  %>%  pmap_df(RH_COadjust)
 
 bbA <- bb %>%
   gather(lagA, value, starts_with("lag")) %>%
@@ -165,41 +155,51 @@ dat$plt <- factor(dat$plt, levels=c("co","o3h8max","fsp","no2","temp","rh"),
                     expression(paste("O"[3],sep = " ")),
                     expression(paste("PM"[2.5],sep = " ")),
                     expression(paste("NO"[2],sep = " ")),
-                    expression(paste("Temp.",sep = " ")),
-                    expression(paste("Humid.",sep = " "))
+                    expression(paste("Temp",sep = " ")),
+                    expression(paste("Humid",sep = " "))
                   ))
 
-P2_2 <- ggplot(dat, aes(lag,matfit,ymin = matlow, ymax = mathigh)) +
-  geom_hline(yintercept = 0,linetype='dashed') +
-  geom_errorbar(aes(group = plt, col = plt, width=0), 
-                size=1, position = position_dodge((width=0.5))) +
-  scale_color_jco()+
-  geom_point(aes(group = plt, col = plt,shape=Significance),size = 2.3, 
-             position = position_dodge(width=0.5)) +
-  scale_shape_manual(values = c(16,8)) +
-  scale_y_continuous(labels=label_number(accuracy =0.01))+
-  facet_wrap(~plt,scales='free',labeller = "label_parsed",ncol =6 ) +
-  ylab(expression(paste(beta," (Risk estimates for env. var. → Sepsis)", sep = "")))+
-  xlab("Lag")+
-  theme(axis.text.x=element_text(size = 12, color= "black"),
-        axis.text.y=element_text(size = 12, color= "black"),
-        axis.title.x=element_text(size=14),
-        axis.title.y=element_text(size=14),
-        axis.ticks.length=unit(0.2,'cm'),
-        axis.line = element_line(colour = "black"),
-        legend.position="none",
-        legend.title = element_blank(),
-        legend.text = element_text(size=12),
-        legend.box="vertical",
-        legend.margin=margin(-15,unit="pt"),
-        legend.box.spacing = margin(15.5),
-        legend.background = element_rect(fill="transparent"),
-        strip.background = element_rect(
-          color = "white", fill = "white"),
-        panel.border = element_blank(),
-        legend.key = element_rect(fill = "transparent"),
-        strip.text = element_text(size = 14),
-        panel.grid = element_blank(),
-        plot.title = element_text(size = 18, hjust=0.5))
-P2_2
+dat$lag <- as.numeric(as.character(dat$lag))  
+
+P2_2 <- ggplot(dat, aes(x = lag, y = matfit)) +
+  geom_hline(yintercept = 0, linetype = 'dashed', col="gray") +
+  geom_ribbon(aes(ymin = matlow, ymax = mathigh), fill = "#708090", alpha = 0.3, color = NA) +
+  geom_line(aes(group = plt), color = "black", alpha=0.7) +
+  geom_errorbar(data = dat[dat$Significance == 1, ], aes(ymin = matlow, ymax = mathigh), width = 0.2, color = "red") +
+  geom_point(aes(shape = factor(Significance), color = factor(Significance == 1)), size = 2, alpha=0.7) +
+  scale_color_manual(values = c("TRUE" = "red", "FALSE" = "black")) +
+  scale_shape_manual(values = c(1, 8)) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.001)) +
+  facet_wrap(~ plt, scales = 'fixed', labeller = "label_parsed", ncol = 6) +
+  ylab(expression(paste("Sepsis risk (", beta, ")", sep = ""))) +
+  scale_x_continuous(breaks = c(0, 1, 2, 3), labels = c("0", "1", "2", "3"), limits = c(-0.5, 3.5)) +
+  xlab("") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 8, color = "darkgray"),
+    axis.text.y = element_text(size = 8, color = "darkgray"),
+    axis.title.x = element_text(size = 10, color = "black"),
+    axis.title.y = element_text(size = 10, color = "black"),
+    axis.ticks.length = unit(0.2, 'cm'),
+    axis.ticks.x = element_line(color = "darkgray"),
+    axis.ticks.y = element_line(color = "darkgray"),
+    axis.line = element_line(colour = "darkgray"),
+    legend.position = "none",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 12),
+    legend.box = "vertical",
+    legend.margin = margin(-15, unit = "pt"),
+    legend.box.spacing = margin(15.5),
+    legend.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    panel.border = element_blank(),
+    legend.key = element_rect(fill = "transparent"),
+    strip.text = element_text(size = 15),
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 40, hjust = 0.5)
+  )
+
+x_lims <- c(-0.4, 3.4)
+P2_2 <- P2_2 + scale_x_continuous(limits = x_lims, breaks = c(0, 1, 2, 3))
+print(P2_2)
 
