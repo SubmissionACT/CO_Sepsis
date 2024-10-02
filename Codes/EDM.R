@@ -6,21 +6,22 @@ lapply(packages, require, character.only=T)
 
 ### data 
 load("sepsis0118.rda")
-df <-  dfA %>% select(date, sep, temp,rh,co,fsp,o3h8max,no2)
+df <-  df %>% select(date, sep, temp,rh,co,fsp,o3h8max)
+df$sep <- log(df$sep)
 
 ### disease and pollutant variables
 dis.name <- c("sep")
-plt.name <- c("co","o3h8max","no2","fsp","temp","rh")
+plt.name <- c("co","o3h8max","fsp","temp","rh")
 
 ### parameters for multi_core running
 cores_all <- detectCores()
-cores <- ifelse(cores_all<9,4,18)
+cores <- ifelse(cores_all<9,4,cores_all-2)
 core_type <- 'PSOCK'
 
 ##################################### data preprocessing #####################################
 
 ### data standardization --- dtrend, dseason, and normalizaiton
-nomz <- function(x, normalization=T, dseason=T, season_sd=F, sea=365, dtrend=T, dTtype="linear"){
+nomz <- function(x, dtrend=T, dseason=T, normalization=T, sea=365, dTtype="linear"){
   x <- as.numeric(x)
   xt <- x
   # Detrend
@@ -31,8 +32,7 @@ nomz <- function(x, normalization=T, dseason=T, season_sd=F, sea=365, dtrend=T, 
   if(dseason==T){
     xs <- as.numeric(apply(matrix(xt[1:(sea*length(xt)%/%sea)],ncol=sea,byrow=T),2,mean,na.rm=T))
     xsd <- as.numeric(apply(matrix(xt[1:(sea*length(xt)%/%sea)],ncol=sea,byrow=T),2,sd,na.rm=T))
-    xt <- xt-c(rep(xs,1+length(xt)%/%sea))[1:length(xt)]
-    if(season_sd==T){xt <- xt/(c(rep(xsd,1+length(xt)%/%sea))[1:length(xt)])}}
+    xt <- xt-c(rep(xs,1+length(xt)%/%sea))[1:length(xt)]}
   # Normalization (zero mean & unity variance)
   if(normalization==T){xt <- (xt-mean(xt,na.rm=T))/sd(xt,na.rm=T)}
   return(xt)
@@ -40,7 +40,7 @@ nomz <- function(x, normalization=T, dseason=T, season_sd=F, sea=365, dtrend=T, 
 
 df <- df %>% as.data.frame() %>% mutate_at(2:ncol(.),nomz) 
        
-write.csv(df, file = "sepsis_TTTF.csv")     
+write.csv(df, file = "sepsis_TTTF.csv")
        
 ########################################## MFI ###########################################
 
@@ -66,7 +66,8 @@ E_smapc=E_smapc_out %>%
   filter(rho==max(rho))  %>%
   as.data.frame()
 
-E_smapc
+ggplot(E_smapc_out, aes(E, rho))+
+  geom_line()
 
 ### determine optimal theta
 fn_theta_justY <- function(data,y,theta){
@@ -102,7 +103,9 @@ best_theta=theta_out %>%
   filter(rho==max(rho))  %>%
   select(-row_number) %>%
   as.data.frame()
-best_theta
+
+ggplot(theta_out, aes(theta, rho)) +
+  geom_line()
 
 ### forecast improvement
 num_surr <- 100
@@ -164,6 +167,14 @@ p_function=function(x,pH,pL){
 
   dfg2_Q=left_join(dfg2_Q1,dfg2_Q0,by=c('E','tp_value',
                                         'dis','plt'))
+  dfg2_Q$plt <- factor(dfg2_Q$plt, levels=c("co","o3h8max","fsp","temp","rh"),
+                      labels = c(
+                        expression(paste("CO",sep = " ")),
+                        expression(paste("O"[3],sep = " ")),
+                        expression(paste("PM"[2.5],sep = " ")),
+                        expression(paste("Temp",sep = " ")),
+                        expression(paste("Humid",sep = " "))
+                      ))
 
   ggplot(dfg2_Q) +
     geom_hline(yintercept = 0,linetype='dashed') +
@@ -182,10 +193,10 @@ p_function=function(x,pH,pL){
           legend.position="none",
           panel.background = element_blank(),
           plot.title = element_text(size = 18, hjust=0.5)) +
-    facet_grid(dis~plt,scales='free')
+    facet_grid(dis~plt,scales='free',labeller = "label_parsed")
 }
 
-dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>% 
+dfg2 <- mfi_surr_out %>% filter(tp_value>=-3) %>% mutate(E=10) %>%
   mutate(i=i-1,grp=ifelse(i==0,'raw','surr'),rho=rho-best_theta$rho, plt=plt_1)
 
 p_function(x='rho',pH=0.95,pL=0.05)
@@ -267,22 +278,21 @@ C_out <- C_out %>%
 C_out$tp_value <- abs(C_out$tp_value)
 C_out$tp_value <- factor(C_out$tp_value, levels=c(0,1,2,3), labels = c(0,1,2,3))
 
-C_out$plt <- factor(C_out$plt, levels=c("co","o3h8max","fsp","no2","temp","rh"),
+C_out$plt <- factor(C_out$plt, levels=c("co","o3h8max","fsp","temp","rh"),
                     labels = c(
                       expression(paste("CO",sep = " ")),
                       expression(paste("O"[3],sep = " ")),
                       expression(paste("PM"[2.5],sep = " ")),
-                      expression(paste("NO"[2],sep = " ")),
                       expression(paste("Temp",sep = " ")),
                       expression(paste("Humid",sep = " "))
                     ))
 
-P_effect <- ggplot(C_out,aes(tp_value,effect,color = special_color))+
+ggplot(C_out,aes(tp_value,effect,color = special_color))+
   geom_hline(yintercept = 0,linetype='dashed',color="darkgray") +
   geom_boxplot(outlier.shape = 23)+
   ylab("Sepsis risk (∂Sep/∂Env)")+
-  xlab("")+
-  scale_color_manual(values = c("red" = "red", "black" = "gray30")) +  
+  xlab("Lag (day)")+
+  scale_color_manual(values = c("red" = "red", "black" = "gray30")) +
   scale_y_continuous(labels = scales::label_number(accuracy = 0.001)) +
   facet_grid(~plt,scales='free',labeller = "label_parsed")+
   theme_bw() +
@@ -307,7 +317,7 @@ P_effect <- ggplot(C_out,aes(tp_value,effect,color = special_color))+
         strip.text = element_blank(),
         panel.grid = element_blank(),
         plot.title = element_text(size = 35, hjust = 0.5, color = "gray40"))
-P_effect
+
 
 
 
