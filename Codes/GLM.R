@@ -152,11 +152,12 @@ GLMresCI <- GLMresCI %>% left_join(iqr, by="plt") %>% mutate(beta=beta*iqr1,
 
 
 GLMresCI$sig <- factor(GLMresCI$sig)
-GLMresCI$plt <- factor(GLMresCI$plt, levels = c("co","o3","fsp","temp","rh"), labels = c(expression(paste("CO",sep = " ")),
-                                                                                         expression(paste("O"[3],sep = " ")),
-                                                                                         expression(paste("PM"[2.5],sep = " ")),
-                                                                                         expression(paste("Temp",sep = " ")),
-                                                                                         expression(paste("Humid",sep = " "))))
+GLMresCI$plt <- factor(GLMresCI$plt, levels = c("co","o3","fsp","temp","rh"), 
+                       labels = c(expression(paste("CO",sep = " ")),
+                                  expression(paste("O"[3],sep = " ")),
+                                  expression(paste("PM"[2.5],sep = " ")),
+                                  expression(paste("Temp",sep = " ")),
+                                  expression(paste("Humid",sep = " "))))
 
 GLMresCI$lag <- as.numeric(as.character(GLMresCI$lag)) 
 
