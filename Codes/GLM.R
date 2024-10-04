@@ -47,11 +47,10 @@ sumA <- function(fitX) {
   
 }
 
-
+### co 
 fit_co_0=glm(formula = sep ~ lag(co,0) + lag(co,1) + lag(co,2) + lag(co,3) + temp+ factor(dow) + factor(holiday), data=data, family=gaussian(), na.action=na.omit)
 out_co_0=sumA(fit_co_0) %>% mutate(plt='co',lag=0);  out_co_0
 
-### co 
 fit_co_1=glm(formula = sep ~ lag(co,1) + lag(co,0) + lag(co,2) + lag(co,3)+ factor(dow) + factor(holiday), data=data, family=gaussian(), na.action=na.omit)
 out_co_1=sumA(fit_co_1) %>% mutate(plt='co',lag=1);  out_co_1
 
@@ -135,7 +134,7 @@ res <- rbind(out_co_0,
              out_fsp_2,
              out_fsp_3)
 
-GAMresCI  =  res %>%
+GLMresCI  =  res %>%
   mutate(
          betalow=beta-1.96*se, 
          betahigh=beta+1.96*se) %>% 
@@ -147,25 +146,25 @@ iqr <- data %>%
   group_by(plt) %>%
   summarise(iqr1 = IQR(value, na.rm = TRUE))
 
-GAMresCI <- GAMresCI %>% left_join(iqr, by="plt") %>% mutate(beta=beta*iqr1,
+GLMresCI <- GLMresCI %>% left_join(iqr, by="plt") %>% mutate(beta=beta*iqr1,
                                                              betalow=betalow*iqr1,
                                                              betahigh=betahigh*iqr1)
 
 
-GAMresCI$sig <- factor(GAMresCI$sig)
-GAMresCI$plt <- factor(GAMresCI$plt, levels = c("co","o3","fsp","temp","rh"), labels = c(expression(paste("CO",sep = " ")),
+GLMresCI$sig <- factor(GLMresCI$sig)
+GLMresCI$plt <- factor(GLMresCI$plt, levels = c("co","o3","fsp","temp","rh"), labels = c(expression(paste("CO",sep = " ")),
                                                                                          expression(paste("O"[3],sep = " ")),
                                                                                          expression(paste("PM"[2.5],sep = " ")),
                                                                                          expression(paste("Temp",sep = " ")),
                                                                                          expression(paste("Humid",sep = " "))))
 
-GAMresCI$lag <- as.numeric(as.character(GAMresCI$lag)) 
+GLMresCI$lag <- as.numeric(as.character(GLMresCI$lag)) 
 
-P2_2 <- ggplot(GAMresCI, aes(x = lag, y = beta)) +
+P2_2 <- ggplot(GLMresCI, aes(x = lag, y = beta)) +
   geom_hline(yintercept = 0, linetype = 'dashed', col="gray") +
   geom_ribbon(aes(ymin = betalow, ymax = betahigh), fill = "#708090", alpha = 0.3, color = NA) +
   geom_line(aes(group = plt), color = "black", alpha=0.7) +
-  geom_errorbar(data = GAMresCI[GAMresCI$sig == 1, ], aes(ymin = betalow, ymax = betahigh), width = 0.2, color = "red") +
+  geom_errorbar(data = GLMresCI[GLMresCI$sig == 1, ], aes(ymin = betalow, ymax = betahigh), width = 0.2, color = "red") +
   geom_point(aes(shape = factor(sig), color = factor(sig == 1)), size = 2, alpha=0.7) +
   scale_color_manual(values = c("TRUE" = "red", "FALSE" = "black")) +
   scale_shape_manual(values = c(1, 8)) +
